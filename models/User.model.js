@@ -1,30 +1,45 @@
 const { Schema, model } = require("mongoose");
 
-// TODO: Please make sure you edit the User model to whatever makes sense in this case
 const userSchema = new Schema(
   {
     email: {
       type: String,
-      required: [true, 'Email is required.'],
+      required: [true, "Email is required."],
       unique: true,
       lowercase: true,
-      trim: true
+      trim: true,
     },
-    password: {
+    passwordHash: {
       type: String,
-      required: [true, 'Password is required.']
+      required: [true, "Password hash is required."],
     },
-    name: { 
+    userName: {
       type: String,
-      required: [true, 'Name is required.']
-    },    
+      required: [true, "Name is required."],
+      trim: true,
+    },
+    cohort: {
+      type: Schema.Types.ObjectId,
+      ref: "Cohort",
+      // required: [true, "Cohort is required."],
+    },
+    role: {
+      type: String,
+      enum: ["USER", "ADMIN"],
+      default: "USER",
+    },
+    profilePicture: {
+      type: String,
+      default: null,
+    },
+    socialLinks: {
+      linkedin: { type: String, default: null },
+      github: { type: String, default: null },
+      instagram: { type: String, default: null },
+      twitter: { type: String, default: null },
+    },
   },
-  {
-    // this second object adds extra properties: `createdAt` and `updatedAt`    
-    timestamps: true
-  }
+  { timestamps: true },
 );
-
 const User = model("User", userSchema);
-
 module.exports = User;
