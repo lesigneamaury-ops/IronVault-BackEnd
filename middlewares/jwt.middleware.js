@@ -7,7 +7,10 @@ function isAuthenticated(req, res, next) {
   ) {
     const theTokenInHeader = req.headers.authorization.split(" ")[1];
     try {
-      const decodedToken = jwt.verify(theTokenInHeader, process.env.JWT_SECRET);
+      const decodedToken = jwt.verify(
+        theTokenInHeader,
+        process.env.TOKEN_SECRET,
+      );
       req.payload = decodedToken;
       next();
     } catch (err) {
