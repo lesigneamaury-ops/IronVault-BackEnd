@@ -9,7 +9,6 @@ router.use("/users", require("./users.routes"));
 router.use("/cohorts", require("./cohorts.routes"));
 router.use("/items", require("./items.routes"));
 router.use("/comments", require("./comments.routes"));
-router.use("/likes", require("./likes.routes"));
 router.use("/admin", require("./admin.routes"));
 
 module.exports = router;

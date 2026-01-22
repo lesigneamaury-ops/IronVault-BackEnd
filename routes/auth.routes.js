@@ -48,7 +48,11 @@ router.post("/login", async (req, res, next) => {
       if (!doesPasswordMatch) {
         res.status(403).json({ errorMessage: "Invalid Credentials" });
       } else {
-        const payload = { _id: userAlreadyInDB._id };
+        const payload = {
+          _id: userAlreadyInDB._id,
+          role: userAlreadyInDB.role,
+          cohortId: userAlreadyInDB.cohort,
+        };
         const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
           algorithm: "HS256",
           expiresIn: "48h",
