@@ -41,6 +41,7 @@ router.patch(
       }
       await Comment.findByIdAndUpdate(req.params.commentId, req.body, {
         new: true,
+        runValidators: true,
       });
       res.status(200).json({ message: "Comment Updated" });
     } catch (error) {

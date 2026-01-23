@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 
 function isAuthenticated(req, res, next) {
   if (
-    req.headers.authorization.split(" ")[0] !== "Bearer" &&
+    req.headers.authorization.split(" ")[0] === "Bearer" &&
     req.headers.authorization.split(" ")[1]
   ) {
     const theTokenInHeader = req.headers.authorization.split(" ")[1];

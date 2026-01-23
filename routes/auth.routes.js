@@ -67,10 +67,14 @@ router.post("/login", async (req, res, next) => {
 });
 
 router.get("/verify", isAuthenticated, async (req, res) => {
-  const currentloggedInUser = await UserModel.findById(req.payload._id).select(
-    "-passwordHash -email",
-  );
-  res.status(200).json({ message: "Token is valid", currentloggedInUser });
+  try {
+    const currentLoggedInUser = await UserModel.findById(
+      req.payload._id,
+    ).select("-passwordHash");
+    res.status(200).json({ message: "Token is valid", currentLoggedInUser });
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;
