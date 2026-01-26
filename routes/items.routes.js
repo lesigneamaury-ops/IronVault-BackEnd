@@ -1,23 +1,45 @@
 const router = require("express").Router();
 const Item = require("../models/Item.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
+const uploader = require("../middlewares/cloudinary.config");
 
-router.post("/create-item", isAuthenticated, async (req, res, next) => {
-  try {
-    const { imageUrl, caption, taggedUsers } = req.body;
-    const newItem = await Item.create({
-      imageUrl,
-      caption: caption || "",
-      taggedUsers: taggedUsers || [],
-      postedBy: req.payload._id,
-      likes: [],
-    });
-    console.log("item created :)", newItem);
-    res.status(201).json(newItem);
-  } catch (error) {
-    next(error);
-  }
-});
+router.post(
+  "/create-item",
+  isAuthenticated,
+  uploader.single("image"),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const caption = req.body.caption || "";
+
+      let taggedUsers = [];
+      if (req.body.taggedUsers) {
+        try {
+          const parsed = JSON.parse(req.body.taggedUsers);
+          if (Array.isArray(parsed)) taggedUsers = parsed;
+        } catch (e) {
+          taggedUsers = [];
+        }
+      }
+
+      const newItem = await Item.create({
+        imageUrl: req.file.path,
+        caption,
+        taggedUsers,
+        postedBy: req.payload._id,
+        likes: [],
+        cohort: req.payload.cohortId,
+      });
+
+      res.status(201).json(newItem);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.get("/liked", isAuthenticated, async (req, res, next) => {
   try {
@@ -69,6 +91,61 @@ router.get("/:itemId", isAuthenticated, async (req, res, next) => {
       .populate("taggedUsers", "userName");
     console.log("Item retrieved", item);
     res.status(200).json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/:itemId", isAuthenticated, async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+
+    const item = await Item.findById(itemId);
+    if (!item) {
+      return res.status(404).json({ errorMessage: "Item not found" });
+    }
+
+    const isAuthor = String(item.postedBy) === String(req.payload._id);
+    const isAdmin = req.payload.role === "ADMIN";
+
+    if (!isAuthor && !isAdmin) {
+      return res.status(403).json({ message: "Action not allowed" });
+    }
+
+    const update = {};
+
+    if (req.body.caption !== undefined) {
+      update.caption = req.body.caption;
+    }
+
+    if (req.body.taggedUsers !== undefined) {
+      let taggedUsers = [];
+
+      if (Array.isArray(req.body.taggedUsers)) {
+        taggedUsers = req.body.taggedUsers;
+      } else if (typeof req.body.taggedUsers === "string") {
+        try {
+          const parsed = JSON.parse(req.body.taggedUsers);
+          if (Array.isArray(parsed)) taggedUsers = parsed;
+        } catch (e) {
+          taggedUsers = req.body.taggedUsers
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+      }
+
+      update.taggedUsers = taggedUsers;
+    }
+
+    const updatedItem = await Item.findByIdAndUpdate(itemId, update, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("postedBy", "userName")
+      .populate("taggedUsers", "userName");
+
+    res.status(200).json(updatedItem);
   } catch (error) {
     next(error);
   }

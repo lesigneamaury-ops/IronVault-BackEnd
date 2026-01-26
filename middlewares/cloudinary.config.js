@@ -10,6 +10,9 @@ cloudinary.config({
   api_secret: process.env.CLOUD_API_SECRET,
 });
 
+console.log("CLOUD_NAME:", process.env.CLOUD_NAME);
+console.log("CLOUD_API_KEY:", process.env.CLOUD_API_KEY);
+
 const storage = new CloudinaryStorage({
   cloudinary,
   folder: "bananarama", // The name of the folder in cloudinary . You can name this whatever you want
