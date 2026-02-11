@@ -1,8 +1,9 @@
 const router = require("express").Router();
 const Cohort = require("../models/Cohort.model");
 const UserModel = require("../models/User.model");
+const { isAuthenticated } = require("../middlewares/jwt.middleware");
 
-router.post("/create-cohort", (req, res) => {
+router.post("/create-cohort", isAuthenticated, (req, res) => {
   Cohort.create(req.body)
     .then((newCohort) => {
       console.log("Cohort created:", newCohort);
@@ -27,8 +28,8 @@ router.get("/cohorts", (req, res) => {
 });
 
 router.get("/cohorts/:id", (req, res) => {
-  const { cohortId } = req.params;
-  Cohort.findById(cohortId, req.body, { new: true })
+  const { id } = req.params;
+  Cohort.findById(id, req.body, { new: true })
     .then((oneCohort) => {
       console.log("One Cohort retrieved");
       res.status(200).json(oneCohort);
@@ -39,11 +40,23 @@ router.get("/cohorts/:id", (req, res) => {
     });
 });
 
-router.get("/cohorts/:id/users", (req, res) => {
+router.get("/me/students", isAuthenticated, async (req, res, next) => {
+  try {
+    const users = await UserModel.find({ cohort: req.payload.cohortId })
+      .select("userName email profilePicture cohort socialLinks")
+      .sort({ userName: 1 });
+
+    res.status(200).json(users);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/cohorts/:id/users", isAuthenticated, (req, res) => {
   const { id } = req.params;
   UserModel.find({ cohort: id })
+    .select("-passwordHash")
     .then((users) => {
-      console.log("Users in Cohort", users);
       res.status(200).json(users);
     })
     .catch((error) => {

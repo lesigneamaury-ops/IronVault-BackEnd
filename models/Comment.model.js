@@ -18,6 +18,22 @@ const commentSchema = new Schema(
       ref: "Item",
       required: [true, "Item is required."],
     },
+    reactions: [
+      {
+        emoji: {
+          type: String,
+          required: true,
+          trim: true,
+          maxlength: 16,
+        },
+        users: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+          },
+        ],
+      },
+    ],
   },
   { timestamps: true },
 );

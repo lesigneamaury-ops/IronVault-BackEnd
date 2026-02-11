@@ -21,17 +21,22 @@ const itemSchema = new Schema(
       required: [true, "postedBy is required."],
     },
 
-    taggedUsers: [
+    likes: [
       {
         type: Schema.Types.ObjectId,
         ref: "User",
       },
     ],
 
-    likes: [
+    reactions: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "User",
+        emoji: { type: String },
+        users: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+          },
+        ],
       },
     ],
 

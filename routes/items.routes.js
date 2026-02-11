@@ -15,20 +15,9 @@ router.post(
 
       const caption = req.body.caption || "";
 
-      let taggedUsers = [];
-      if (req.body.taggedUsers) {
-        try {
-          const parsed = JSON.parse(req.body.taggedUsers);
-          if (Array.isArray(parsed)) taggedUsers = parsed;
-        } catch (e) {
-          taggedUsers = [];
-        }
-      }
-
       const newItem = await Item.create({
         imageUrl: req.file.path,
         caption,
-        taggedUsers,
         postedBy: req.payload._id,
         likes: [],
         cohort: req.payload.cohortId,
@@ -49,7 +38,6 @@ router.get("/liked", isAuthenticated, async (req, res, next) => {
       likes: userId,
     })
       .populate("postedBy", "userName")
-      .populate("taggedUsers", "userName")
       .sort({ createdAt: -1 });
 
     res.status(200).json(items);
@@ -58,24 +46,10 @@ router.get("/liked", isAuthenticated, async (req, res, next) => {
   }
 });
 
-router.get("/tagged", isAuthenticated, async (req, res, next) => {
-  try {
-    const items = await Item.find({ taggedUsers: req.payload._id })
-      .populate("postedBy", "userName")
-      .populate("taggedUsers", "userName")
-      .sort({ createdAt: -1 });
-    console.log("Tagged items", items);
-    res.status(200).json(items);
-  } catch (error) {
-    next(error);
-  }
-});
-
 router.get("/", isAuthenticated, async (req, res, next) => {
   try {
     const items = await Item.find({ cohort: req.payload.cohortId })
       .populate("postedBy", "userName")
-      .populate("taggedUsers", "userName")
       .sort({ createdAt: -1 });
     console.log("All items", items);
     res.status(200).json(items);
@@ -86,9 +60,10 @@ router.get("/", isAuthenticated, async (req, res, next) => {
 
 router.get("/:itemId", isAuthenticated, async (req, res, next) => {
   try {
-    const item = await Item.findById(req.params.itemId)
-      .populate("postedBy", "userName")
-      .populate("taggedUsers", "userName");
+    const item = await Item.findById(req.params.itemId).populate(
+      "postedBy",
+      "userName",
+    );
     console.log("Item retrieved", item);
     res.status(200).json(item);
   } catch (error) {
@@ -118,32 +93,10 @@ router.patch("/:itemId", isAuthenticated, async (req, res, next) => {
       update.caption = req.body.caption;
     }
 
-    if (req.body.taggedUsers !== undefined) {
-      let taggedUsers = [];
-
-      if (Array.isArray(req.body.taggedUsers)) {
-        taggedUsers = req.body.taggedUsers;
-      } else if (typeof req.body.taggedUsers === "string") {
-        try {
-          const parsed = JSON.parse(req.body.taggedUsers);
-          if (Array.isArray(parsed)) taggedUsers = parsed;
-        } catch (e) {
-          taggedUsers = req.body.taggedUsers
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean);
-        }
-      }
-
-      update.taggedUsers = taggedUsers;
-    }
-
     const updatedItem = await Item.findByIdAndUpdate(itemId, update, {
       new: true,
       runValidators: true,
-    })
-      .populate("postedBy", "userName")
-      .populate("taggedUsers", "userName");
+    }).populate("postedBy", "userName");
 
     res.status(200).json(updatedItem);
   } catch (error) {
@@ -179,6 +132,66 @@ router.patch("/:itemId/like", isAuthenticated, async (req, res, next) => {
     );
 
     return res.status(200).json(likedItem);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Toggle reaction (emoji) on an item
+router.patch("/:itemId/reactions", isAuthenticated, async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const { emoji } = req.body;
+    const userId = req.payload._id;
+
+    if (!emoji) {
+      return res.status(400).json({ message: "Emoji is required" });
+    }
+
+    const item = await Item.findById(itemId);
+    if (!item) {
+      return res.status(404).json({ errorMessage: "Item not found" });
+    }
+
+    // find reaction entry
+    const entryIndex =
+      item.reactions?.findIndex((r) => r.emoji === emoji) ?? -1;
+
+    if (entryIndex >= 0) {
+      const entry = item.reactions[entryIndex];
+      const userIncluded = entry.users.some(
+        (u) =>
+          String(u) === String(userId) ||
+          String(u?._id || u) === String(userId),
+      );
+
+      if (userIncluded) {
+        // remove user
+        item.reactions[entryIndex].users = entry.users.filter(
+          (u) =>
+            String(u) !== String(userId) &&
+            String(u?._id || u) !== String(userId),
+        );
+        // if no users left, remove the reaction entry
+        if (item.reactions[entryIndex].users.length === 0) {
+          item.reactions.splice(entryIndex, 1);
+        }
+      } else {
+        // add user
+        item.reactions[entryIndex].users.push(userId);
+      }
+    } else {
+      // add new reaction entry
+      item.reactions = item.reactions || [];
+      item.reactions.push({ emoji, users: [userId] });
+    }
+
+    const updated = await item.save();
+    const populated = await Item.findById(updated._id).populate(
+      "postedBy",
+      "userName",
+    );
+    res.status(200).json(populated);
   } catch (error) {
     next(error);
   }

@@ -8,29 +8,41 @@ const { isAuthenticated } = require("../middlewares/jwt.middleware");
 router.post("/signup", async (req, res, next) => {
   const { name, email, password } = req.body;
   try {
+    if (!password || password.length < 6) {
+      return res
+        .status(400)
+        .json({ errorMessage: "Password must be at least 6 characters long." });
+    }
+
     const userAlreadyInDB = await UserModel.findOne({ email });
     if (userAlreadyInDB) {
-      return res.status(403).json({ message: "Invalid Credentials" });
-    } else {
-      const theSalt = bcrypt.genSaltSync(12);
-
-      const hashedPassword = bcrypt.hashSync(password, theSalt);
-
-      //this is the object that will be saved in the DB
-      const hashedUser = {
-        userName: name,
-        email,
-        passwordHash: hashedPassword,
-      };
-
-      const createdUser = await UserModel.create(hashedUser);
-      const userObj = createdUser.toObject();
-      delete userObj.passwordHash;
-      res.status(201).json(userObj);
+      return res.status(403).json({ errorMessage: "Invalid Credentials" });
     }
+
+    const theSalt = bcrypt.genSaltSync(12);
+    const hashedPassword = bcrypt.hashSync(password, theSalt);
+
+    const createdUser = await UserModel.create({
+      userName: name,
+      email,
+      passwordHash: hashedPassword,
+    });
+
+    // Return a token directly so the frontend doesn't need a second request
+    const payload = {
+      _id: createdUser._id,
+      role: createdUser.role,
+      cohortId: createdUser.cohort,
+    };
+    const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
+      algorithm: "HS256",
+      expiresIn: "48h",
+    });
+
+    res.status(201).json({ message: "Account created!", authToken });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ errorMessage: error });
+    res.status(500).json({ errorMessage: "Signup failed. Please try again." });
   }
 });
 
