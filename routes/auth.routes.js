@@ -5,30 +5,35 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
 
+// POST /auth/signup - Create a new user account
 router.post("/signup", async (req, res, next) => {
   const { name, email, password } = req.body;
   try {
+    // Validate password length (minimum 6 characters)
     if (!password || password.length < 6) {
       return res
         .status(400)
         .json({ errorMessage: "Password must be at least 6 characters long." });
     }
 
+    // Check if email is already taken
     const userAlreadyInDB = await UserModel.findOne({ email });
     if (userAlreadyInDB) {
       return res.status(403).json({ errorMessage: "Invalid Credentials" });
     }
 
+    // Hash the password with bcrypt (12 salt rounds)
     const theSalt = bcrypt.genSaltSync(12);
     const hashedPassword = bcrypt.hashSync(password, theSalt);
 
+    // Create the user in the database
     const createdUser = await UserModel.create({
       userName: name,
       email,
       passwordHash: hashedPassword,
     });
 
-    // Return a token directly so the frontend doesn't need a second request
+    // Create a JWT token and return it directly (no second login needed)
     const payload = {
       _id: createdUser._id,
       role: createdUser.role,
@@ -46,13 +51,16 @@ router.post("/signup", async (req, res, next) => {
   }
 });
 
+// POST /auth/login - Log in with email and password
 router.post("/login", async (req, res, next) => {
   const { email, password } = req.body;
   try {
+    // Find the user by email
     const userAlreadyInDB = await UserModel.findOne({ email });
     if (!userAlreadyInDB) {
       return res.status(403).json({ errorMessage: "Invalid Credentials" });
     } else {
+      // Compare the plain password with the stored hash
       const doesPasswordMatch = bcrypt.compareSync(
         password,
         userAlreadyInDB.passwordHash,
@@ -60,6 +68,7 @@ router.post("/login", async (req, res, next) => {
       if (!doesPasswordMatch) {
         res.status(403).json({ errorMessage: "Invalid Credentials" });
       } else {
+        // Create a JWT token with user info
         const payload = {
           _id: userAlreadyInDB._id,
           role: userAlreadyInDB.role,
@@ -78,8 +87,10 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
+// GET /auth/verify - Check if the current token is still valid
 router.get("/verify", isAuthenticated, async (req, res) => {
   try {
+    // Return user data without the password hash
     const currentLoggedInUser = await UserModel.findById(
       req.payload._id,
     ).select("-passwordHash");

@@ -1,5 +1,6 @@
 const { Schema, model } = require("mongoose");
 
+// Comment schema - a comment on an item, with emoji reactions
 const commentSchema = new Schema(
   {
     content: {

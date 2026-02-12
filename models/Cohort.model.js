@@ -1,6 +1,8 @@
 const { Schema, model } = require("mongoose");
 
+// Cohort schema - represents a class/batch (WDFT-Nov-2025)
 const cohortSchema = new Schema({
+  // Course type (WDFT = Web Dev Full Time)
   course: {
     type: String,
     enum: [
@@ -39,6 +41,7 @@ const cohortSchema = new Schema({
     min: 2000,
     max: 2100,
   },
+  // Virtual field that auto-generates "WDFT-Nov-2025" format
   displayName: {
     type: String,
     get: function () {
@@ -46,6 +49,6 @@ const cohortSchema = new Schema({
     },
   },
 });
-const Cohort = model("Cohort", cohortSchema);
 
+const Cohort = model("Cohort", cohortSchema);
 module.exports = Cohort;

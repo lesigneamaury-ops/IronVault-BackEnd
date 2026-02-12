@@ -1,5 +1,6 @@
 const { Schema, model } = require("mongoose");
 
+// Item schema - represents an image uploaded by a user
 const itemSchema = new Schema(
   {
     imageUrl: {
@@ -7,27 +8,17 @@ const itemSchema = new Schema(
       required: [true, "Image URL is required."],
       trim: true,
     },
-
     caption: {
       type: String,
       trim: true,
       maxlength: 200,
       default: "",
     },
-
     postedBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: [true, "postedBy is required."],
     },
-
-    likes: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-
     reactions: [
       {
         emoji: { type: String },
@@ -39,11 +30,9 @@ const itemSchema = new Schema(
         ],
       },
     ],
-
     cohort: {
       type: Schema.Types.ObjectId,
       ref: "Cohort",
-      // required: [true, "Cohort is required."],
     },
   },
   { timestamps: true },

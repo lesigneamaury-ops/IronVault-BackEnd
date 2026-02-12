@@ -3,6 +3,7 @@ const Item = require("../models/Item.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
 const uploader = require("../middlewares/cloudinary.config");
 
+// POST /items/create-item - Upload a new image to the gallery
 router.post(
   "/create-item",
   isAuthenticated,
@@ -30,6 +31,7 @@ router.post(
   },
 );
 
+// GET /items/liked - Get all items the current user has liked
 router.get("/liked", isAuthenticated, async (req, res, next) => {
   try {
     const userId = req.payload._id;
@@ -46,6 +48,7 @@ router.get("/liked", isAuthenticated, async (req, res, next) => {
   }
 });
 
+// GET /items - Get all items for the user's cohort
 router.get("/", isAuthenticated, async (req, res, next) => {
   try {
     const items = await Item.find({ cohort: req.payload.cohortId })
@@ -58,6 +61,7 @@ router.get("/", isAuthenticated, async (req, res, next) => {
   }
 });
 
+// GET /items/:itemId - Get one item by ID
 router.get("/:itemId", isAuthenticated, async (req, res, next) => {
   try {
     const item = await Item.findById(req.params.itemId).populate(
@@ -71,6 +75,7 @@ router.get("/:itemId", isAuthenticated, async (req, res, next) => {
   }
 });
 
+// PATCH /items/:itemId - Update caption (only author or admin)
 router.patch("/:itemId", isAuthenticated, async (req, res, next) => {
   try {
     const { itemId } = req.params;
@@ -80,6 +85,7 @@ router.patch("/:itemId", isAuthenticated, async (req, res, next) => {
       return res.status(404).json({ errorMessage: "Item not found" });
     }
 
+    // Authorization check: only the author or an admin can edit
     const isAuthor = String(item.postedBy) === String(req.payload._id);
     const isAdmin = req.payload.role === "ADMIN";
 
@@ -103,41 +109,7 @@ router.patch("/:itemId", isAuthenticated, async (req, res, next) => {
     next(error);
   }
 });
-
-router.patch("/:itemId/like", isAuthenticated, async (req, res, next) => {
-  try {
-    const { itemId } = req.params;
-    const userId = req.payload._id;
-
-    const item = await Item.findById(itemId);
-    if (!item) {
-      return res.status(404).json({ errorMessage: "Item not found" });
-    }
-
-    // TOGGLE LIKE
-    if (item.likes.includes(userId)) {
-      const unLikedItem = await Item.findByIdAndUpdate(
-        itemId,
-        { $pull: { likes: userId } },
-        { new: true, runValidators: true },
-      );
-
-      return res.status(200).json(unLikedItem);
-    }
-
-    const likedItem = await Item.findByIdAndUpdate(
-      itemId,
-      { $push: { likes: userId } },
-      { new: true, runValidators: true },
-    );
-
-    return res.status(200).json(likedItem);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Toggle reaction (emoji) on an item
+// PATCH /items/:itemId/reactions - Toggle an emoji reaction on an item
 router.patch("/:itemId/reactions", isAuthenticated, async (req, res, next) => {
   try {
     const { itemId } = req.params;
@@ -153,7 +125,7 @@ router.patch("/:itemId/reactions", isAuthenticated, async (req, res, next) => {
       return res.status(404).json({ errorMessage: "Item not found" });
     }
 
-    // find reaction entry
+    // Check if this emoji reaction already exists on the item
     const entryIndex =
       item.reactions?.findIndex((r) => r.emoji === emoji) ?? -1;
 
@@ -166,22 +138,22 @@ router.patch("/:itemId/reactions", isAuthenticated, async (req, res, next) => {
       );
 
       if (userIncluded) {
-        // remove user
+        // User already reacted -> remove their reaction
         item.reactions[entryIndex].users = entry.users.filter(
           (u) =>
             String(u) !== String(userId) &&
             String(u?._id || u) !== String(userId),
         );
-        // if no users left, remove the reaction entry
+        // If no users left on this emoji, remove the entry entirely
         if (item.reactions[entryIndex].users.length === 0) {
           item.reactions.splice(entryIndex, 1);
         }
       } else {
-        // add user
+        // User hasn't reacted with this emoji yet -> add them
         item.reactions[entryIndex].users.push(userId);
       }
     } else {
-      // add new reaction entry
+      // This emoji doesn't exist yet -> create a new reaction entry
       item.reactions = item.reactions || [];
       item.reactions.push({ emoji, users: [userId] });
     }
@@ -197,9 +169,12 @@ router.patch("/:itemId/reactions", isAuthenticated, async (req, res, next) => {
   }
 });
 
+// DELETE /items/:itemId - Delete an item (only author or admin)
 router.delete("/:itemId", isAuthenticated, async (req, res, next) => {
   try {
     const item = await Item.findById(req.params.itemId);
+
+    // Authorization check
     const isAuthor = String(item.postedBy) === String(req.payload._id);
     const isAdmin = req.payload.role === "ADMIN";
 

@@ -1,5 +1,6 @@
 const { Schema, model } = require("mongoose");
 
+// User schema - stores account info, role, profile, and social links
 const userSchema = new Schema(
   {
     email: {
@@ -21,7 +22,6 @@ const userSchema = new Schema(
     cohort: {
       type: Schema.Types.ObjectId,
       ref: "Cohort",
-      // required: [true, "Cohort is required."],
     },
     role: {
       type: String,
@@ -41,5 +41,6 @@ const userSchema = new Schema(
   },
   { timestamps: true },
 );
+
 const User = model("User", userSchema);
 module.exports = User;

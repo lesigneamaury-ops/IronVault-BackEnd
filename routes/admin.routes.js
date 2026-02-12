@@ -4,6 +4,7 @@ const User = require("../models/User.model");
 const Item = require("../models/Item.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
 
+// Middleware that checks if the user has the ADMIN role
 function isAdmin(req, res, next) {
   if (req.payload?.role !== "ADMIN") {
     return res.status(403).json({ message: "Admin access required" });
@@ -11,10 +12,12 @@ function isAdmin(req, res, next) {
   return next();
 }
 
+// GET /admin - Health check for admin API
 router.get("/", isAuthenticated, isAdmin, (req, res) => {
   res.status(200).json({ message: "Admin API ready" });
 });
 
+// GET /admin/cohorts - Get all cohorts (sorted by year, month, course)
 router.get("/cohorts", isAuthenticated, isAdmin, async (req, res, next) => {
   try {
     const cohorts = await Cohort.find({}).sort({ year: -1, month: 1, course: 1 });
@@ -24,6 +27,7 @@ router.get("/cohorts", isAuthenticated, isAdmin, async (req, res, next) => {
   }
 });
 
+// GET /admin/cohorts/:cohortId/students - Get all students in a cohort
 router.get(
   "/cohorts/:cohortId/students",
   isAuthenticated,
@@ -42,6 +46,7 @@ router.get(
   },
 );
 
+// GET /admin/cohorts/:cohortId/items - Get all items in a cohort
 router.get(
   "/cohorts/:cohortId/items",
   isAuthenticated,

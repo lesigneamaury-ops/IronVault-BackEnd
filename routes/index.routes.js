@@ -1,9 +1,11 @@
 const router = require("express").Router();
 
+// Health check route
 router.get("/", (req, res) => {
   res.json("IronVault API - All good in here");
 });
 
+// Mount all route files
 router.use("/auth", require("./auth.routes"));
 router.use("/users", require("./users.routes"));
 router.use("/cohorts", require("./cohorts.routes"));
